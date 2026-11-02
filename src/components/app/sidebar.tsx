@@ -15,6 +15,7 @@ import {
   Settings,
   LogOut,
   ChevronUp,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { initials } from "@/lib/utils";
@@ -204,7 +205,15 @@ export function MobileSidebar({
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <div className="absolute inset-y-0 left-0 w-72 animate-in slide-in-from-left shadow-2xl">
+      <div className="absolute inset-y-0 left-0 w-[min(18rem,88vw)] animate-in slide-in-from-left bg-white shadow-2xl dark:bg-slate-950">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close navigation"
+          className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-md bg-white text-slate-600 shadow-sm hover:bg-slate-100"
+        >
+          <X className="h-5 w-5" />
+        </button>
         <Sidebar onNavigate={onClose} />
       </div>
     </div>

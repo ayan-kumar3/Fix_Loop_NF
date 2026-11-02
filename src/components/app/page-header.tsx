@@ -55,7 +55,7 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
         {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
       </div>
 
-      <div className="flex items-center gap-2.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2.5">
         {actions}
 
         <div className="hidden items-center gap-2 rounded-md border bg-slate-50 px-3 py-1.5 text-sm text-slate-600 md:flex">
@@ -73,7 +73,7 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 p-0">
+          <DropdownMenuContent align="end" className="w-[min(20rem,calc(100vw-1rem))] p-0">
             <div className="flex items-center justify-between border-b px-3 py-2">
               <span className="text-sm font-semibold">Notifications</span>
               {unread > 0 && (

@@ -1744,3 +1744,88 @@ header a.marketing-explore-button:hover {
     padding-left: 0.5rem;
   }
 }
+
+@media (max-width: 1023px) {
+  .app-frame {
+    height: 100dvh;
+  }
+
+  .app-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .app-page-header {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (max-width: 639px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .app-page-header {
+    gap: 0.75rem;
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
+  }
+
+  .app-page-header h1 {
+    overflow-wrap: anywhere;
+    font-size: 1.125rem;
+  }
+
+  .app-page-header > div:last-child {
+    width: 100%;
+  }
+
+  .app-scroll [class*="space-y-"] {
+    min-width: 0;
+  }
+
+  .app-scroll .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-scroll [class*="min-w-["][class*="w-full"] {
+    min-width: 0;
+  }
+
+  .app-scroll table {
+    min-width: 640px;
+  }
+
+  .app-scroll canvas,
+  .app-scroll svg {
+    max-width: 100%;
+  }
+
+  .app-scroll iframe,
+  .app-scroll .leaflet-container {
+    width: 100% !important;
+  }
+
+  .leaflet-container {
+    min-height: 300px;
+  }
+}

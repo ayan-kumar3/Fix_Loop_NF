@@ -22,7 +22,7 @@ export function AppShell({
 
   return (
     <AppProvider profile={profile} mode={mode} initialNotifications={notifications}>
-      <div className="app-frame flex h-screen overflow-hidden">
+      <div className="app-frame flex h-screen min-h-0 overflow-hidden">
         {/* Desktop sidebar */}
         <aside className="hidden w-64 shrink-0 border-r border-slate-200/80 dark:border-slate-800/70 lg:block">
           <Sidebar />
@@ -31,7 +31,7 @@ export function AppShell({
         {/* Mobile drawer */}
         <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
 
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {/* Mobile top bar */}
           <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur lg:hidden">
             <button
@@ -44,7 +44,7 @@ export function AppShell({
             <Wordmark markSize={26} />
           </header>
 
-          <main className="app-scroll flex-1 overflow-y-auto scrollbar-thin">{children}</main>
+          <main className="app-scroll min-w-0 flex-1 overflow-x-hidden overflow-y-auto scrollbar-thin">{children}</main>
         </div>
       </div>
     </AppProvider>

@@ -24,9 +24,11 @@ export default function LoginPage() {
   const [state, formAction] = useFormState<AuthState, FormData>(login, {});
   const [showPassword, setShowPassword] = React.useState(false);
   const [notice, setNotice] = React.useState("");
+  const [email, setEmail] = React.useState("");
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    setEmail(params.get("email") ?? "");
     if (params.get("confirmed") === "1") {
       setNotice(
         params.get("signout") === "failed"
@@ -84,7 +86,7 @@ export default function LoginPage() {
 
           <div className="auth-field space-y-1.5" data-auth-step>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "email-error" : undefined} />
+            <Input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "email-error" : undefined} />
             {fieldErrors.email && <p id="email-error" className="text-xs text-danger">{fieldErrors.email}</p>}
           </div>
 

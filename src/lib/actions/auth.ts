@@ -16,6 +16,29 @@ export interface AuthState {
 
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
+function friendlyAuthError(error: { message?: string } | null | undefined, action: "login" | "signup"): string {
+  const message = error?.message?.toLowerCase() ?? "";
+  if (message.includes("rate limit") || message.includes("too many") || message.includes("email rate") || message.includes("over_email_send_rate_limit")) {
+    return "Too many requests were sent in a short period. Wait about one minute, then try again.";
+  }
+  if (message.includes("signup is disabled")) {
+    return "New account registration is temporarily disabled. Please contact the workspace owner.";
+  }
+  if (message.includes("invalid login credentials")) {
+    return "The email or password is incorrect. Use the same email and password you created during signup.";
+  }
+  if (message.includes("email not confirmed")) {
+    return "Confirm your email address before signing in. Check your inbox for the confirmation link.";
+  }
+  if (message.includes("user already registered") || message.includes("already exists")) {
+    return "An account with this email already exists. Sign in instead.";
+  }
+  if (action === "signup" && message.includes("password")) {
+    return "Choose a stronger password with at least 8 characters, including upper- and lowercase letters and a number.";
+  }
+  return error?.message || (action === "login" ? "Unable to sign in right now. Please try again." : "Unable to create your account right now. Please try again.");
+}
+
 function matchesAdminBootstrapKey(candidate: string): boolean {
   const configuredKey = process.env.ADMIN_BOOTSTRAP_KEY;
   if (!configuredKey || configuredKey.length < 24) return false;
@@ -60,7 +83,7 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
       if (message.includes("email not confirmed")) {
         return { error: "Confirm your email address before signing in. Check your inbox for the confirmation link." };
       }
-      return { error: "Invalid email or password." };
+      return { error: friendlyAuthError(error, "login") };
     }
     try {
       // Ensure a profile row exists for this auth user.
@@ -157,7 +180,7 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
       return { error: "Unable to create your account right now. Please try again." };
     }
     const { data, error } = result;
-    if (error) return { error: error.message };
+    if (error) return { error: friendlyAuthError(error, "signup") };
     if (!data.user) return { error: "No account was created. Please check your details and try again." };
     if (data.user.identities?.length === 0) {
       return { error: "An account with this email already exists. Sign in instead." };
@@ -205,7 +228,7 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
         return { error: "Account created, but automatic sign-out failed. Sign out before logging in." };
       }
     }
-    const redirectParams = new URLSearchParams({ registered: "1" });
+    const redirectParams = new URLSearchParams({ registered: "1", email });
     if (!data.session) redirectParams.set("confirm", "1");
     if (isAdministrator) redirectParams.set("administrator", "1");
     if (requestedRole === "field_staff") redirectParams.set("field_staff", "1");

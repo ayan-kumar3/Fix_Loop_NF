@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
 import { Eye, EyeOff, Loader2, LogIn, AlertCircle } from "lucide-react";
 import { login, type AuthState } from "@/lib/actions/auth";
@@ -10,13 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/components/toaster";
-
-const DEMO_ACCOUNTS = [
-  { role: "Administrator", email: "sarah.khan@fixloop.gov" },
-  { role: "Field Staff", email: "mike.torres@fixloop.gov" },
-  { role: "Resident", email: "aisha.patel@mail.com" },
-];
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -29,17 +21,42 @@ function SubmitButton() {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [state, formAction] = useFormState<AuthState, FormData>(login, {});
   const [showPassword, setShowPassword] = React.useState(false);
-  const [demoEmail, setDemoEmail] = React.useState("");
+  const [notice, setNotice] = React.useState("");
 
   React.useEffect(() => {
-    if (state?.success) {
-      toast({ title: "Welcome back", description: "Signed in successfully.", variant: "success" });
-      router.push("/dashboard");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("confirmed") === "1") {
+      setNotice(
+        params.get("signout") === "failed"
+          ? "Email confirmed. If you are redirected away from login, sign out first, then sign in with your credentials."
+          : "Email confirmed. Sign in to continue."
+      );
+    } else if (params.get("registered") === "1") {
+      if (params.get("administrator") === "1") {
+        setNotice(
+          params.get("confirm") === "1"
+            ? "Your first administrator account is set up. Confirm your email, then sign in."
+            : "Your first administrator account is set up. Sign in to continue."
+        );
+      } else if (params.get("field_staff") === "1") {
+        setNotice(
+          params.get("confirm") === "1"
+            ? "Account created. Confirm your email, then sign in. Field Staff access will be reviewed."
+            : "Account created. Sign in to continue. Field Staff access will be reviewed."
+        );
+      } else {
+        setNotice(
+          params.get("confirm") === "1"
+            ? "Account created. Confirm your email, then sign in."
+            : "Account created. Sign in to continue."
+        );
+      }
+    } else if (params.get("confirmation") === "failed") {
+      setNotice("That confirmation link is invalid or expired. Request a new signup email.");
     }
-  }, [state, router]);
+  }, []);
 
   const fieldErrors = state?.fieldErrors ?? {};
 
@@ -59,9 +76,15 @@ export default function LoginPage() {
             </div>
           )}
 
+          {notice && (
+            <p role="status" className="rounded-md border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800">
+              {notice}
+            </p>
+          )}
+
           <div className="auth-field space-y-1.5" data-auth-step>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" placeholder="you@example.com" defaultValue={demoEmail} autoComplete="email" aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "email-error" : undefined} />
+            <Input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "email-error" : undefined} />
             {fieldErrors.email && <p id="email-error" className="text-xs text-danger">{fieldErrors.email}</p>}
           </div>
 
@@ -93,23 +116,6 @@ export default function LoginPage() {
 
           <div data-auth-step><SubmitButton /></div>
         </form>
-
-        <div className="auth-demo mt-5 rounded-lg border p-3" data-auth-step>
-          <p className="text-xs font-medium text-slate-600">Try a demo account (any password):</p>
-          <div className="mt-2 space-y-1.5">
-            {DEMO_ACCOUNTS.map((a) => (
-              <button
-                key={a.email}
-                type="button"
-                onClick={() => setDemoEmail(a.email)}
-                className="auth-demo-row flex w-full items-center justify-between rounded-md border px-2.5 py-2 text-left text-xs transition-colors"
-              >
-                <span className="font-medium text-slate-700">{a.email}</span>
-                <span className="text-slate-400">{a.role}</span>
-              </button>
-            ))}
-          </div>
-        </div>
 
         <p className="auth-switch mt-5 text-center text-sm" data-auth-step>
           Don&apos;t have an account?{" "}

@@ -75,9 +75,9 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). No environment variables needed — without Supabase vars FixLoop boots into **demo mode** with seeded sample data (labelled in the UI).
+Open [http://localhost:5001](http://localhost:5001). No environment variables needed — without Supabase vars FixLoop boots into **demo mode** with seeded sample data (labelled in the UI).
 
-Sign in with any demo account (any password works in demo mode):
+Sign in with any demo account (any non-empty password works in demo mode):
 
 | Role | Email | What you can do |
 |---|---|---|
@@ -85,7 +85,7 @@ Sign in with any demo account (any password works in demo mode):
 | Field Staff | `mike.torres@fixloop.gov` | Progress assigned work orders, submit resolutions for verification |
 | Resident | `aisha.patel@mail.com` | Report issues, comment, verify/dispute resolutions |
 
-Or click a demo account button on the login screen.
+The login screen accepts the email and password directly; it does not ask users to choose a role.
 
 ---
 
@@ -100,11 +100,12 @@ Copy-Item .env.example .env.local
 | Variable | Required? | Purpose |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Optional | Supabase project URL. **Absent → demo mode.** |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | Supabase anon (public) key |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Optional | Supabase publishable (public) key. The legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` name is also supported. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Only in Supabase mode | **Server-only.** Privileged writes from route handlers. Never prefixed `NEXT_PUBLIC`. |
+| `ADMIN_BOOTSTRAP_KEY` | First administrator signup | **Server-only.** One-time workspace setup key, at least 24 characters. Never commit or expose it in browser code. |
 | `GEMINI_API_KEY` | Optional | **Server-only.** Google AI Studio key. Absent → manual AI fallback + retry. |
 | `GEMINI_MODEL` | Optional | Defaults to `gemini-3.8-flash`; image analysis falls back to `gemini-3.7-flash` and `gemini-3.5-flash-lite` if a model is overloaded or returns an unusable response |
-| `NEXT_PUBLIC_APP_URL` | Optional | Base URL for absolute links (default `http://localhost:3000`) |
+| `NEXT_PUBLIC_APP_URL` | Optional | Base URL for absolute links (default `http://localhost:5001`) |
 | `DUPLICATE_DISTANCE_METERS` | Optional | Duplicate distance radius (default `250`) |
 | `DUPLICATE_SIMILARITY_THRESHOLD` | Optional | Duplicate text-similarity threshold 0–1 (default `0.55`) |
 
@@ -115,23 +116,29 @@ Copy-Item .env.example .env.local
 ## Supabase setup (optional, production mode)
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. In **Settings → API**, copy the project URL, anon key, and service-role key into `.env.local`.
+2. Copy `.env.example` to `.env.local`, then fill in the project URL, anon key, service-role key, and a random `ADMIN_BOOTSTRAP_KEY` (at least 24 characters). Generate a key with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`. Keep `.env.local` private and never paste keys into chat. Without real Supabase values, the application stays in demo mode and does not persist accounts to Supabase.
 3. Apply the schema. Either:
-   - **SQL editor:** paste and run the migrations in order (`0001_init.sql`, `0002_resident_only_public_signup.sql`, and `0003_ai_visual_report.sql`), **then** `supabase/seed.sql`; or
+   - **SQL editor:** paste and run the migrations in order (`0001_init.sql` through `0006_first_admin_bootstrap.sql`), **then** optionally run `supabase/seed.sql`; or
    - **Supabase CLI:**
      ```powershell
      npx supabase init        # once, if you don't have a config
      npx supabase link --project-ref <your-project-ref>
      npx supabase db push
      ```
-4. In **Authentication → Providers**, ensure **Email** is enabled. The migration installs a trigger (`handle_new_user`) that auto-creates a `profiles` row for each new auth user.
+4. In **Authentication → Providers**, ensure **Email** is enabled. Set the Site URL to `http://localhost:5001` and add `http://localhost:5001/auth/callback` to the redirect URL allow list. The auth trigger creates a `profiles` row for every new user.
 5. Restart `npm run dev`. The sidebar shows **"Supabase mode"** instead of the demo badge.
+
+At signup, choose Resident, Field Staff, or Administrator. Signup always leads to the login page; when email confirmation is enabled, users first confirm their address through `/auth/callback`, then sign in. The login page never offers role selection.
+
+**First administrator:** choose Administrator on signup and enter the server-side `ADMIN_BOOTSTRAP_KEY`. The first active administrator is assigned immediately without approval. The database migration serializes this one-time bootstrap and only allows the trusted server's service-role client to call it. Afterward, an administrator can assign roles directly from **Members**; new public signups cannot promote themselves.
+
+For a fresh project that was seeded with the optional demo data, sign in as `sarah.khan@fixloop.gov` (`demo1234`) instead: the seed already creates an administrator, so first-admin bootstrap is intentionally closed.
 
 **Storage (optional):** create a public bucket named `issue-media` for photo uploads in Supabase mode. In demo mode images are stored as compressed JPEG data URLs in memory and category thumbnails are static SVGs in `/public/demo`, so no bucket is needed to evaluate the app.
 
 **Row Level Security** is enabled on every table (see the migration): readable data requires authentication, users update their own profile/notification rows, and admin-only writes go through the service role behind server-side role checks.
 
-> **Honest note:** Supabase has not been exercised against a live project. The configured Gemini key and current model were verified directly; use the local report flow to verify your full application session and permissions.
+If a Supabase account's profile row is missing, signing in recreates it with the same ID as the authenticated user and resident-only access.
 
 ---
 
@@ -151,7 +158,7 @@ If the key is missing, rate-limited, or the model returns invalid JSON, the UI s
 
 | Command | Purpose |
 |---|---|
-| `npm run dev -- --port 5001` | Development server at http://localhost:5001 |
+| `npm run dev` | Development server at http://localhost:5001 |
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint |

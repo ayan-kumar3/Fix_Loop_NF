@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import { getStore } from "@/lib/db/store";
 import { requireProfile, AuthError, validateEmail } from "@/lib/auth";
 import { USER_ROLES } from "@/lib/types";
-import type { UserRole } from "@/lib/types";
+import type { RoleRequestStatus, UserRole } from "@/lib/types";
 
 export interface AdminActionResult {
   ok: boolean;
@@ -55,6 +55,31 @@ export async function setMemberRole(memberId: string, role: UserRole): Promise<A
     revalidatePath("/members");
     revalidatePath("/team");
     return ok(`${member.fullName} is now a ${role.replace("_", " ")}.`);
+  } catch (e) {
+    return handleError(e);
+  }
+}
+
+/** Approve or reject a requested staff or administrator role. */
+export async function reviewRoleRequest(
+  requestId: string,
+  status: Exclude<RoleRequestStatus, "pending">
+): Promise<AdminActionResult> {
+  try {
+    const admin = await requireProfile();
+    if (admin.role !== "administrator") return fail("Only administrators can review role requests.");
+    if (!requestId.trim()) return fail("Role request not found.");
+    if (status !== "approved" && status !== "rejected") return fail("Invalid review decision.");
+
+    const store = await getStore();
+    const request = await store.reviewRoleRequest(requestId, status, admin.id);
+    revalidatePath("/members");
+    revalidatePath("/team");
+    return ok(
+      status === "approved"
+        ? `The ${request.requestedRole.replace("_", " ")} request was approved.`
+        : "The role request was rejected."
+    );
   } catch (e) {
     return handleError(e);
   }

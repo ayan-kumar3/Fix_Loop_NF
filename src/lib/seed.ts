@@ -28,6 +28,7 @@ import type {
   IssueStatus,
   Notification,
   Profile,
+  RoleRequest,
   Team,
   Verification,
   WorkOrder,
@@ -45,6 +46,7 @@ export interface Comment {
 
 export interface SeedData {
   profiles: Profile[];
+  roleRequests: RoleRequest[];
   teams: Team[];
   issues: Issue[];
   issueMedia: IssueMedia[];
@@ -250,7 +252,7 @@ export function buildSeed(nowMs: number = Date.now()): SeedData {
     { id: nid("ntf"), userId: null, title: "Duplicate cluster confirmed", body: "3 sanitation reports on Main Street were grouped.", kind: "system", read: true, linkHref: "/map", createdAt: iso(nowMs, 2 * H) },
   ];
 
-  return { profiles, teams, issues, issueMedia, aiAnalyses, issueEvents, comments, workOrders, verifications, issueGroups, notifications };
+  return { profiles, roleRequests: [], teams, issues, issueMedia, aiAnalyses, issueEvents, comments, workOrders, verifications, issueGroups, notifications };
 }
 
 // ---------------------------------------------------------------------------

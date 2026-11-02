@@ -18,6 +18,9 @@ import type {
   IssueMedia,
   Notification,
   Profile,
+  RequestedRole,
+  RoleRequest,
+  RoleRequestStatus,
   Team,
   Verification,
   WorkOrder,
@@ -110,8 +113,8 @@ export class SupabaseStore implements DataStore {
     if (error) throw error;
     return data ? this.mapProfile(data as Record<string, unknown>) : null;
   }
-  async createProfile(input: { fullName: string; email: string; role: Profile["role"] }): Promise<Profile> {
-    const id = crypto.randomUUID();
+  async createProfile(input: { id?: string; fullName: string; email: string; role: Profile["role"] }): Promise<Profile> {
+    const id = input.id ?? crypto.randomUUID();
     const row = {
       id,
       full_name: input.fullName,
@@ -135,6 +138,47 @@ export class SupabaseStore implements DataStore {
     const { data, error } = await this.write.from("profiles").update(row).eq("id", id).select().single();
     if (error) throw error;
     return this.mapProfile(data as Record<string, unknown>);
+  }
+  async createRoleRequest(userId: string, requestedRole: RequestedRole): Promise<RoleRequest> {
+    const client = this.admin ?? createServerClient();
+    const { data, error } = await client
+      .from("role_requests")
+      .insert({ user_id: userId, requested_role: requestedRole })
+      .select()
+      .single();
+    if (error) throw error;
+    return this.mapRoleRequest(data as Record<string, unknown>);
+  }
+  async getRoleRequests(status?: RoleRequestStatus): Promise<RoleRequest[]> {
+    let query = createServerClient().from("role_requests").select("*").order("created_at", { ascending: true });
+    if (status) query = query.eq("status", status);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data ?? []).map((row: Record<string, unknown>) => this.mapRoleRequest(row));
+  }
+  async reviewRoleRequest(
+    id: string,
+    status: Exclude<RoleRequestStatus, "pending">,
+    reviewedBy: string
+  ): Promise<RoleRequest> {
+    const { data, error } = await createServerClient().rpc("review_role_request", {
+      p_request_id: id,
+      p_reviewer_id: reviewedBy,
+      p_approve: status === "approved",
+    });
+    if (error) throw error;
+    return this.mapRoleRequest(data as Record<string, unknown>);
+  }
+  private mapRoleRequest(row: Record<string, unknown>): RoleRequest {
+    return {
+      id: row.id as string,
+      userId: row.user_id as string,
+      requestedRole: row.requested_role as RequestedRole,
+      status: row.status as RoleRequestStatus,
+      createdAt: row.created_at as string,
+      reviewedAt: (row.reviewed_at as string | null) ?? null,
+      reviewedBy: (row.reviewed_by as string | null) ?? null,
+    };
   }
   async getTeams(): Promise<Team[]> {
     const { data, error } = await this.db.from("teams").select("*");

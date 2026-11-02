@@ -2,8 +2,11 @@ import Link from "next/link";
 import { ArrowUpRight, Check, CircleDot, ShieldCheck, Sparkles } from "lucide-react";
 import { Wordmark } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { runtimeMode } from "@/lib/db/store";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  const isSupabase = runtimeMode() === "supabase";
+
   return (
     <div className="auth-page relative flex min-h-screen flex-col overflow-hidden">
       <div className="auth-glow auth-glow-one" aria-hidden="true" />
@@ -69,7 +72,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </main>
 
       <footer className="auth-footer relative z-10 px-5 pb-5 text-center text-xs sm:px-8 lg:px-12">
-        Demo environment · sample accounts are pre-seeded
+        {isSupabase
+          ? "Secure workspace · connected to Supabase"
+          : "Demo environment · sample accounts are pre-seeded"}
       </footer>
     </div>
   );

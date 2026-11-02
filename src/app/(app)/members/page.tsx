@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AlertCircle, UserCog } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { MembersTable } from "@/components/members/members-table";
+import { RoleRequests } from "@/components/members/role-requests";
 import { DemoBadge } from "@/components/shared/issue-badges";
 import { getCurrentProfile } from "@/lib/auth";
 import { getStore } from "@/lib/db/store";
@@ -17,14 +18,14 @@ export default async function MembersPage() {
 
   const store = await getStore();
   const profiles = await store.getProfiles();
+  const isAdmin = viewer.role === "administrator";
+  const roleRequests = isAdmin ? await store.getRoleRequests("pending") : [];
 
   const counts = USER_ROLES.map((r) => ({
     role: r,
     label: ROLE_META[r].label,
     count: profiles.filter((p) => p.role === r && p.isActive).length,
   }));
-
-  const isAdmin = viewer.role === "administrator";
 
   return (
     <div className="flex flex-col">
@@ -61,6 +62,8 @@ export default async function MembersPage() {
             </p>
           </div>
         )}
+
+        {isAdmin && <RoleRequests requests={roleRequests} profiles={profiles} />}
 
         <MembersTable profiles={profiles} viewerId={viewer.id} />
 

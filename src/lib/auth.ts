@@ -37,6 +37,9 @@ export async function getSessionUserId(): Promise<string | null> {
       // During static generation / build-time evaluation there may be no request
       // context yet, so fall back to the demo cookie flow below.
     }
+    // Supabase uses UUID users. Demo cookies such as usr_1001_... must never be
+    // sent to PostgreSQL after switching database modes.
+    return null;
   }
 
   try {

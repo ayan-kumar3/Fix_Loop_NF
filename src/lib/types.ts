@@ -98,6 +98,19 @@ export interface Profile {
   isActive: boolean;
 }
 
+export type RequestedRole = Exclude<UserRole, "resident">;
+export type RoleRequestStatus = "pending" | "approved" | "rejected";
+
+export interface RoleRequest {
+  id: string;
+  userId: string;
+  requestedRole: RequestedRole;
+  status: RoleRequestStatus;
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+}
+
 export interface Team {
   id: string;
   name: string;

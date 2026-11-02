@@ -1,7 +1,7 @@
 -- ---------------------------------------------------------------------------
 -- FixLoop — optional demo seed for Supabase mode
 --
--- Run AFTER supabase/migrations/0001_init.sql in the Supabase SQL editor.
+-- Run AFTER supabase/migrations/0001_init.sql through 0006_first_admin_bootstrap.sql.
 --
 -- What it creates:
 --   • 4 field crews
@@ -36,8 +36,9 @@ insert into public.teams (id, name, specialty, member_count, lead_name) values
 on conflict (id) do nothing;
 
 -- ---- Demo auth users -----------------------------------------------------
--- The handle_new_user trigger (installed by the migration) creates each
--- profiles row, picking up full_name/role from raw_user_meta_data.
+-- The handle_new_user trigger creates each profile as a resident. This trusted
+-- SQL seed then assigns the fixture roles; public signup metadata never grants
+-- elevated access.
 do $$
 declare
   pw text := crypt('demo1234', gen_salt('bf'));
@@ -67,6 +68,10 @@ begin
       jsonb_build_object('full_name', u->>'name', 'role', u->>'role'),
       now(), now()
     );
+
+    update public.profiles
+    set role = (u->>'role')::user_role
+    where id = new_id;
 
     -- Attach field staff to their crew.
     if u ? 'team' then

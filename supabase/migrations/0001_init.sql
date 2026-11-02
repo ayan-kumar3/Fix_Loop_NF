@@ -45,23 +45,6 @@ do $$ begin
   create type verification_verdict as enum ('confirm_resolved','still_not_fixed');
 exception when duplicate_object then null; end $$;
 
--- ---- Helpers -------------------------------------------------------------
--- Returns the caller's role for the current request (used by RLS policies).
-create or replace function auth_role()
-returns user_role
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select role from public.profiles where id = auth.uid()
-$$;
-
-create or replace function is_admin()
-returns boolean
-language sql stable security definer set search_path = public
-as $$ select coalesce((select role = 'administrator' from public.profiles where id = auth.uid()), false) $$;
-
 -- ---- Tables --------------------------------------------------------------
 create table if not exists public.teams (
   id text primary key,
@@ -82,6 +65,20 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now(),
   is_active boolean not null default true
 );
+
+-- RLS helpers must be created after the profiles table they query.
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select role = 'administrator' from public.profiles where id = auth.uid()),
+    false
+  )
+$$;
 
 create table if not exists public.issues (
   id uuid primary key default gen_random_uuid(),

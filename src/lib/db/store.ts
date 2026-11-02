@@ -22,6 +22,9 @@ import type {
   IssueStatus,
   Notification,
   Profile,
+  RequestedRole,
+  RoleRequest,
+  RoleRequestStatus,
   Team,
   Verification,
   WorkOrder,
@@ -64,12 +67,16 @@ export interface DataStore {
   getProfiles(): Promise<Profile[]>;
   getProfile(id: string): Promise<Profile | null>;
   createProfile(input: {
+    id?: string;
     fullName: string;
     email: string;
     role: Profile["role"];
     password?: string;
   }): Promise<Profile>;
   updateProfile(id: string, patch: Partial<Pick<Profile, "fullName" | "phone" | "isActive" | "role" | "teamId">>): Promise<Profile>;
+  createRoleRequest(userId: string, requestedRole: RequestedRole): Promise<RoleRequest>;
+  getRoleRequests(status?: RoleRequestStatus): Promise<RoleRequest[]>;
+  reviewRoleRequest(id: string, status: Exclude<RoleRequestStatus, "pending">, reviewedBy: string): Promise<RoleRequest>;
   getTeams(): Promise<Team[]>;
 
   // Issues
@@ -131,7 +138,8 @@ export interface WorkOrderNoteInput {
 
 export function supabaseConfigured(): boolean {
   return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
   );
 }
 

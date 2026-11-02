@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
 import { Eye, EyeOff, Loader2, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
 import { signup, type AuthState } from "@/lib/actions/auth";
@@ -11,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/components/toaster";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -24,24 +23,10 @@ function SubmitButton() {
 }
 
 export default function SignupPage() {
-  const router = useRouter();
   const [state, formAction] = useFormState<AuthState, FormData>(signup, {});
   const [showPassword, setShowPassword] = React.useState(false);
   const [password, setPassword] = React.useState("");
-
-  React.useEffect(() => {
-    if (state?.success) {
-      const needsEmailConfirmation = state.needsEmailConfirmation;
-      toast({
-        title: needsEmailConfirmation ? "Check your email" : "Account created",
-        description: needsEmailConfirmation
-          ? "Confirm your email address, then sign in."
-          : "Welcome to FixLoop.",
-        variant: "success",
-      });
-      router.push(needsEmailConfirmation ? "/login" : "/dashboard");
-    }
-  }, [state, router]);
+  const [requestedRole, setRequestedRole] = React.useState("resident");
 
   const fieldErrors = state?.fieldErrors ?? {};
   const passErr = password ? validatePassword(password) : null;
@@ -109,9 +94,44 @@ export default function SignupPage() {
             {fieldErrors.password && <p id="password-error" className="text-xs text-danger">{fieldErrors.password}</p>}
           </div>
 
-          <p className="text-xs text-slate-500" data-auth-step>
-            New accounts start as Residents. Contact an administrator if you need a staff role.
-          </p>
+          <div className="auth-field space-y-1.5" data-auth-step>
+            <Label htmlFor="requestedRole">Choose your account role</Label>
+            <Select name="requestedRole" value={requestedRole} onValueChange={setRequestedRole}>
+              <SelectTrigger id="requestedRole" aria-invalid={Boolean(fieldErrors.requestedRole)}>
+                <SelectValue placeholder="Choose a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="resident">Resident (immediate access)</SelectItem>
+                <SelectItem value="field_staff">Field Staff (review required)</SelectItem>
+                <SelectItem value="administrator">Administrator (setup key required)</SelectItem>
+              </SelectContent>
+            </Select>
+            {fieldErrors.requestedRole && <p className="text-xs text-danger">{fieldErrors.requestedRole}</p>}
+            <p className="text-xs text-slate-500">
+              {requestedRole === "administrator"
+                ? "Anyone with the valid workspace setup key can register as an administrator."
+                : requestedRole === "field_staff"
+                  ? "Field Staff accounts start as Residents until an administrator reviews the request."
+                  : "Resident accounts are ready to use after signup. You will be asked to sign in."}
+            </p>
+          </div>
+
+          {requestedRole === "administrator" && (
+            <div className="auth-field space-y-1.5" data-auth-step>
+              <Label htmlFor="adminBootstrapKey">Administrator setup key</Label>
+              <Input
+                id="adminBootstrapKey"
+                name="adminBootstrapKey"
+                type="password"
+                autoComplete="off"
+                aria-invalid={Boolean(fieldErrors.adminBootstrapKey)}
+                aria-describedby={fieldErrors.adminBootstrapKey ? "adminBootstrapKey-error" : "adminBootstrapKey-help"}
+              />
+              {fieldErrors.adminBootstrapKey
+                ? <p id="adminBootstrapKey-error" className="text-xs text-danger">{fieldErrors.adminBootstrapKey}</p>
+                : <p id="adminBootstrapKey-help" className="text-xs text-slate-500">Ask the project owner for the one-time workspace setup key.</p>}
+            </div>
+          )}
 
           <div data-auth-step><SubmitButton /></div>
         </form>

@@ -15,6 +15,9 @@ import type {
   IssueMedia,
   Notification,
   Profile,
+  RequestedRole,
+  RoleRequest,
+  RoleRequestStatus,
   Team,
   Verification,
   WorkOrder,
@@ -53,11 +56,11 @@ export class DemoStore implements DataStore {
     const p = this.db().profiles.find((x) => x.id === id);
     return p ? ensureAvatar(p) : null;
   }
-  async createProfile(input: { fullName: string; email: string; role: Profile["role"] }): Promise<Profile> {
+  async createProfile(input: { id?: string; fullName: string; email: string; role: Profile["role"] }): Promise<Profile> {
     const existing = this.db().profiles.find((p) => p.email.toLowerCase() === input.email.toLowerCase());
     if (existing) throw new Error("An account with this email already exists.");
     const p: Profile = {
-      id: nextId("usr"),
+      id: input.id ?? nextId("usr"),
       fullName: input.fullName,
       email: input.email,
       role: input.role,
@@ -75,6 +78,40 @@ export class DemoStore implements DataStore {
     if (!p) throw new Error("Profile not found");
     Object.assign(p, patch);
     return ensureAvatar(p);
+  }
+  async createRoleRequest(userId: string, requestedRole: RequestedRole): Promise<RoleRequest> {
+    const pending = this.db().roleRequests.find((request) => request.userId === userId && request.status === "pending");
+    if (pending) throw new Error("You already have a role request awaiting review.");
+    const request: RoleRequest = {
+      id: nextId("role_request"),
+      userId,
+      requestedRole,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      reviewedAt: null,
+      reviewedBy: null,
+    };
+    this.db().roleRequests.push(request);
+    return request;
+  }
+  async getRoleRequests(status?: RoleRequestStatus): Promise<RoleRequest[]> {
+    return this.db().roleRequests
+      .filter((request) => !status || request.status === status)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+  async reviewRoleRequest(
+    id: string,
+    status: Exclude<RoleRequestStatus, "pending">,
+    reviewedBy: string
+  ): Promise<RoleRequest> {
+    const request = this.db().roleRequests.find((entry) => entry.id === id);
+    if (!request) throw new Error("Role request not found.");
+    if (request.status !== "pending") throw new Error("This role request has already been reviewed.");
+    if (status === "approved") await this.updateProfile(request.userId, { role: request.requestedRole });
+    request.status = status;
+    request.reviewedAt = new Date().toISOString();
+    request.reviewedBy = reviewedBy;
+    return request;
   }
   async getTeams(): Promise<Team[]> {
     return this.db().teams;

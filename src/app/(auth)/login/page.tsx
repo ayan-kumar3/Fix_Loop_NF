@@ -8,11 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-function SubmitButton() {
+function SubmitButton({ isSubmitting }: { isSubmitting: boolean }) {
   return (
-    <Button type="submit" className="auth-submit w-full">
-      <LogIn />
-      Sign in
+    <Button type="submit" className="auth-submit w-full" disabled={isSubmitting}>
+      {isSubmitting ? <Loader2 className="animate-spin" /> : <LogIn />}
+      {isSubmitting ? "Signing in..." : "Sign in"}
     </Button>
   );
 }
@@ -22,6 +22,7 @@ export default function LoginPage() {
   const [notice, setNotice] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [serverError, setServerError] = React.useState("");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -66,7 +67,12 @@ export default function LoginPage() {
         <CardDescription className="auth-card-description" data-auth-step>Access your community operations workspace.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action="/api/auth/login" method="post" className="auth-form space-y-4">
+        <form
+          action="/api/auth/login"
+          method="post"
+          className="auth-form space-y-4"
+          onSubmit={() => setIsSubmitting(true)}
+        >
           {serverError && (
             <div role="alert" className="auth-error flex items-start gap-2 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -109,7 +115,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div data-auth-step><SubmitButton /></div>
+          <div data-auth-step><SubmitButton isSubmitting={isSubmitting} /></div>
         </form>
 
         <p className="auth-switch mt-5 text-center text-sm" data-auth-step>

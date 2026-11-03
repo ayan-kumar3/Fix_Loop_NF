@@ -27,7 +27,11 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   const { profile, notifications, setNotifications } = useApp();
   const unread = useUnreadCount();
   const router = useRouter();
-  const today = format(new Date(), "EEEE, MMMM d");
+  const [today, setToday] = React.useState("");
+
+  React.useEffect(() => {
+    setToday(format(new Date(), "EEEE, MMMM d"));
+  }, []);
 
   const markAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -59,7 +63,7 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
         {actions}
 
         <div className="hidden items-center gap-2 rounded-md border bg-slate-50 px-3 py-1.5 text-sm text-slate-600 md:flex">
-          <span className="font-medium">{today}</span>
+          <span className="font-medium">{today || "\u00a0"}</span>
         </div>
 
         <DropdownMenu>

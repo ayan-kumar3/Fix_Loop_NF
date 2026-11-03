@@ -99,6 +99,41 @@ export function verifySessionCookie(value: string | undefined): string | null {
 
 export async function getSessionUserId(): Promise<string | null> {
   const store = await getStore();
+  try {
+    const accountCookie = cookies().get(DEMO_ACCOUNT_COOKIE)?.value;
+    if (store.mode === "demo" && accountCookie) {
+      const separator = accountCookie.lastIndexOf(".");
+      const payload = separator > 0 ? accountCookie.slice(0, separator) : "";
+      const signature = separator > 0 ? accountCookie.slice(separator + 1) : "";
+      const expected = createHmac("sha256", demoCookieSecret()).update(payload).digest("hex");
+      const provided = Buffer.from(signature);
+      const actual = Buffer.from(expected);
+      if (provided.length === actual.length && timingSafeEqual(provided, actual)) {
+        try {
+          const account = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+            id: string;
+            fullName: string;
+            email: string;
+            role: Profile["role"];
+          };
+          if (!(await store.getProfile(account.id))) {
+            await store.createProfile({
+              id: account.id,
+              fullName: account.fullName,
+              email: account.email,
+              role: account.role,
+            });
+          }
+          return account.id;
+        } catch {
+          // Fall through to the normal session cookie below.
+        }
+      }
+    }
+  } catch {
+    // Fall through to the normal session cookie below.
+  }
+
   if (store.mode === "supabase") {
     try {
       const { createServerClient } = await import("@/lib/supabase/server");
@@ -128,37 +163,6 @@ export async function getSessionUserId(): Promise<string | null> {
   }
 
   try {
-    const accountCookie = cookies().get(DEMO_ACCOUNT_COOKIE)?.value;
-    if (accountCookie) {
-      const separator = accountCookie.lastIndexOf(".");
-      const payload = separator > 0 ? accountCookie.slice(0, separator) : "";
-      const signature = separator > 0 ? accountCookie.slice(separator + 1) : "";
-      const expected = createHmac("sha256", demoCookieSecret()).update(payload).digest("hex");
-      const provided = Buffer.from(signature);
-      const actual = Buffer.from(expected);
-      if (provided.length === actual.length && timingSafeEqual(provided, actual)) {
-        try {
-          const account = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
-            id: string;
-            fullName: string;
-            email: string;
-            role: Profile["role"];
-          };
-          const store = await getStore();
-          if (!(await store.getProfile(account.id))) {
-            await store.createProfile({
-              id: account.id,
-              fullName: account.fullName,
-              email: account.email,
-              role: account.role,
-            });
-          }
-          return account.id;
-        } catch {
-          // Fall through to the session cookie for seeded demo accounts.
-        }
-      }
-    }
     return cookies().get(SESSION_COOKIE)?.value ?? null;
   } catch {
     return null;

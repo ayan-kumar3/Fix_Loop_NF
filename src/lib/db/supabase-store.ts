@@ -70,7 +70,14 @@ function mapIssue(r: IssueRow): Issue {
     category: r.category,
     priority: r.priority,
     status: r.status === "assigned" && !r.assigned_to_id ? "under_review" : r.status,
-    location: { address: r.address, area: r.area ?? "Unzoned", coordinates: { lat: r.lat, lng: r.lng } },
+    location: {
+      address: r.address ?? "Address unavailable",
+      area: r.area ?? "Unzoned",
+      coordinates: {
+        lat: Number.isFinite(Number(r.lat)) ? Number(r.lat) : 0,
+        lng: Number.isFinite(Number(r.lng)) ? Number(r.lng) : 0,
+      },
+    },
     reporterId: r.reporter_id ?? "",
     reporterName: r.reporter_name ?? "Resident",
     assignedToId: r.assigned_to_id,
@@ -232,11 +239,14 @@ export class SupabaseStore implements DataStore {
     }
     if (!data) return null;
     const issue = mapIssue(data as unknown as IssueRow);
-    const [comments, media, groups] = await Promise.all([
+    const [commentsResult, mediaResult, groupsResult] = await Promise.allSettled([
       this.getComments(issue.id),
       this.getMedia(issue.id),
       this.getGroups(),
     ]);
+    const comments = commentsResult.status === "fulfilled" ? commentsResult.value : [];
+    const media = mediaResult.status === "fulfilled" ? mediaResult.value : [];
+    const groups = groupsResult.status === "fulfilled" ? groupsResult.value : [];
     issue.commentCount = comments.length;
     issue.mediaCount = media.length;
     issue.relatedCount = groups.reduce((s, g) => (g.memberIssueIds.includes(issue.id) ? s + g.memberIssueIds.length - 1 : s), 0);

@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/app/page-header";
-import { IssueDetailView } from "@/components/issues/issue-detail";
+import { IssueDetailView, type IssueDetailData } from "@/components/issues/issue-detail";
 import { getStore } from "@/lib/db/store";
 import { getCurrentProfile } from "@/lib/auth";
+import type { AiAnalysis, IssueEvent, IssueGroup, IssueMedia, Verification, WorkOrder } from "@/lib/types";
+import type { Comment } from "@/lib/seed";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const store = await getStore();
-  const issue = await store.getIssue(params.id);
+  const issue = await store.getIssue(params.id).catch(() => null);
   return { title: issue ? `${issue.publicId} · ${issue.title}` : "Issue" };
 }
 
@@ -24,7 +26,7 @@ export default async function IssueDetailPage({ params }: { params: { id: string
   const issue = await store.getIssue(params.id);
   if (!issue) notFound();
 
-  const [media, events, comments, verifications, groups, workOrders, profiles, analyses] = await Promise.all([
+  const results = await Promise.allSettled([
     store.getMedia(issue.id),
     store.getEvents(issue.id),
     store.getComments(issue.id),
@@ -34,6 +36,16 @@ export default async function IssueDetailPage({ params }: { params: { id: string
     store.getProfiles(),
     store.getAnalyses(issue.id),
   ]);
+  const fallback = <T,>(index: number, empty: T): T =>
+    results[index].status === "fulfilled" ? results[index].value as T : empty;
+  const media = fallback<IssueMedia[]>(0, []);
+  const events = fallback<IssueEvent[]>(1, []);
+  const comments = fallback<Comment[]>(2, []);
+  const verifications = fallback<Verification[]>(3, []);
+  const groups = fallback<IssueGroup[]>(4, []);
+  const workOrders = fallback<WorkOrder[]>(5, []);
+  const profiles = fallback<IssueDetailData["staff"]>(6, []);
+  const analyses = fallback<AiAnalysis[]>(7, []);
 
   const group = groups.find((g) => g.memberIssueIds.includes(issue.id)) ?? null;
   const workOrder = workOrders.find((w) => w.issueId === issue.id) ?? null;

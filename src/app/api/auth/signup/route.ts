@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient, getServiceClient } from "@/lib/supabase/server";
+import { getStore, supabaseConfigured } from "@/lib/db/store";
 import { USER_ROLES } from "@/lib/types";
 import { validateEmail, validatePassword } from "@/lib/validation";
 
@@ -37,6 +38,25 @@ export async function POST(request: NextRequest) {
 
   if (requestedRole === "administrator" && !matchesAdminKey(adminKey)) {
     return redirect(request, "/signup", { error: "Enter the administrator setup key provided by the workspace owner." });
+  }
+
+  if (!supabaseConfigured()) {
+    const store = await getStore();
+    try {
+      const profile = await store.createProfile({ fullName, email, role: "resident", password });
+      if (requestedRole === "field_staff") {
+        await store.createRoleRequest(profile.id, "field_staff");
+      }
+    } catch (error) {
+      return redirect(request, "/signup", {
+        error: error instanceof Error ? error.message : "Unable to create your account right now.",
+      });
+    }
+    return redirect(request, "/login", {
+      registered: "1",
+      email,
+      ...(requestedRole === "field_staff" ? { field_staff: "1" } : {}),
+    });
   }
 
   const response = NextResponse.next();

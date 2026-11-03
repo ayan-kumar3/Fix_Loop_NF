@@ -20,7 +20,25 @@ export async function POST(request: NextRequest) {
   if (!password) return redirectWithError(request, "Password is required.");
 
   if (!supabaseConfigured()) {
-    return redirectWithError(request, "Supabase is not configured on this server.");
+    const store = await getStore();
+    const profile = (await store.getProfiles()).find(
+      (candidate) => candidate.email.toLowerCase() === email
+    );
+    if (!profile) {
+      return redirectWithError(request, "No account found with that email. Create an account first.");
+    }
+    if (!profile.isActive) {
+      return redirectWithError(request, "This account is deactivated. Contact your workspace administrator.");
+    }
+    const response = NextResponse.redirect(new URL("/dashboard", request.url), { status: 303 });
+    response.cookies.set(SESSION_COOKIE, profile.id, {
+      httpOnly: true,
+      secure: request.nextUrl.protocol === "https:",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+    return response;
   }
 
   const response = NextResponse.redirect(new URL("/dashboard", request.url), { status: 303 });

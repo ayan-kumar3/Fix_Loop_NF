@@ -31,8 +31,8 @@ export function geminiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-const FALLBACK_MODELS = ["gemini-2.0-flash-lite", "gemini-1.5-flash"];
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const FALLBACK_MODELS = ["gemini-flash-latest", "gemini-2.5-flash-lite"];
 
 const TIMEOUT_MS = 20_000;
 

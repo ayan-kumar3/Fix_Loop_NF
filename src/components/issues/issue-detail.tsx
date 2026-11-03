@@ -555,12 +555,26 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
 
 function PhotoThumb({ url, caption }: { url: string; caption?: string | null }) {
   const [open, setOpen] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
+  const hasImage = typeof url === "string" && url.trim().length > 0;
   return (
     <figure className="overflow-hidden rounded-lg border">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt={caption ?? "issue photo"} onClick={() => setOpen(true)} className="h-32 w-full cursor-zoom-in object-cover transition-transform hover:scale-105" />
+      {hasImage && !failed ? (
+        <img
+          src={url}
+          alt={caption ?? "issue photo"}
+          onError={() => setFailed(true)}
+          onClick={() => setOpen(true)}
+          className="h-32 w-full cursor-zoom-in object-cover transition-transform hover:scale-105"
+        />
+      ) : (
+        <div className="flex h-32 w-full items-center justify-center bg-slate-100 text-xs text-slate-500">
+          Image unavailable
+        </div>
+      )}
       {caption && <figcaption className="truncate px-2 py-1 text-xs text-slate-500">{caption}</figcaption>}
-      {open && (
+      {open && hasImage && !failed && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" onClick={() => setOpen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={url} alt="" className="max-h-full max-w-full rounded-lg object-contain" />

@@ -23,7 +23,13 @@ export default async function IssueDetailPage({ params }: { params: { id: string
   }
 
   const store = await getStore();
-  const issue = await store.getIssue(params.id);
+  let issue = null;
+  try {
+    issue = await store.getIssue(params.id);
+  } catch (error) {
+    console.error("Failed to load report detail:", error);
+    notFound();
+  }
   if (!issue) notFound();
 
   const results = await Promise.allSettled([

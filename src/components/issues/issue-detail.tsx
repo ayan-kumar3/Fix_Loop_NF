@@ -106,9 +106,12 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
   const profile = useProfile();
   const router = useRouter();
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [displayStatus, setDisplayStatus] = React.useState(issue.status);
   const [comment, setComment] = React.useState("");
   const [verifyReason, setVerifyReason] = React.useState("");
   const [selectedStaffId, setSelectedStaffId] = React.useState(issue.assignedToId ?? "");
+
+  React.useEffect(() => setDisplayStatus(issue.status), [issue.status]);
 
   const refresh = () => router.refresh();
   const run = async (key: string, fn: () => Promise<{ ok: boolean; error?: string; message?: string }>, successMsg?: string) => {
@@ -132,11 +135,11 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
   const isReporter = profile.id === issue.reporterId;
   const isAdmin = profile.role === "administrator";
   const isStaff = profile.role === "field_staff";
-  const canVerify = issue.status === "resolved_pending_verification" && (isReporter || isAdmin || profile.role === "resident");
+  const canVerify = displayStatus === "resolved_pending_verification" && (isReporter || isAdmin || profile.role === "resident");
 
   // Statuses the current user may transition to.
   const allowedStatuses = (Object.keys(NEXT_STATUS_LABEL) as IssueStatus[]).filter(
-    (s) => canTransition(issue.status, s) && s !== issue.status && canSetStatus(profile.role, s)
+    (s) => canTransition(displayStatus, s) && s !== displayStatus && canSetStatus(profile.role, s)
   );
 
   return (
@@ -148,7 +151,7 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
           <CardContent className="p-5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-sm font-bold text-brand-700">{issue.publicId}</span>
-              <StatusChip status={issue.status} />
+              <StatusChip status={displayStatus} />
               <PriorityChip priority={issue.priority} />
             </div>
             <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{issue.title}</h1>
@@ -294,7 +297,7 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
             <CardTitle className="flex items-center gap-2"><Clock className="h-4 w-4" /> Activity timeline</CardTitle>
           </CardHeader>
           <CardContent>
-            <Lifecycle current={issue.status} />
+            <Lifecycle current={displayStatus} />
             <Separator className="my-4" />
             <ol className="relative space-y-4 border-l pl-5">
               {events.map((e) => (
@@ -381,7 +384,14 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
                   onValueChange={(id) => {
                     if (!id || busy) return;
                     setSelectedStaffId(id);
-                    run("assign", () => assignIssue(issue.id, id));
+                    if (displayStatus === "submitted" || displayStatus === "under_review") {
+                      setDisplayStatus("assigned");
+                    }
+                    run("assign", async () => {
+                      const result = await assignIssue(issue.id, id);
+                      if (!result.ok) setDisplayStatus(issue.status);
+                      return result;
+                    });
                   }}
                   disabled={staff.length === 0 || busy !== null}
                 >
@@ -411,7 +421,14 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
                     size="sm"
                     variant={s === "resolved_pending_verification" ? "success" : s === "rejected" ? "destructive" : "outline"}
                     disabled={busy === s}
-                    onClick={() => run(s, () => changeIssueStatus(issue.id, s).then((r) => ({ ok: r.ok, error: r.error })), `Moved to ${STATUS_META[s].label}.`)}
+                    onClick={() => {
+                      const previousStatus = displayStatus;
+                      setDisplayStatus(s);
+                      void run(s, () => changeIssueStatus(issue.id, s).then((r) => {
+                        if (!r.ok) setDisplayStatus(previousStatus);
+                        return { ok: r.ok, error: r.error };
+                      }), `Moved to ${STATUS_META[s].label}.`);
+                    }}
                   >
                     {busy === s ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                     {NEXT_STATUS_LABEL[s]}
@@ -428,7 +445,7 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
         </Card>
 
         {/* Community verification */}
-        {issue.status === "resolved_pending_verification" && (
+        {displayStatus === "resolved_pending_verification" && (
           <Card className="border-brand-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-4 w-4 text-brand-600" /> Awaiting community verification</CardTitle>

@@ -21,6 +21,14 @@ function ok(message?: string): ActionResult {
   return { ok: true, message };
 }
 
+async function bestEffort(name: string, operation: () => Promise<unknown>): Promise<void> {
+  try {
+    await operation();
+  } catch (error) {
+    console.error(`FixLoop non-blocking ${name} failure`, error);
+  }
+}
+
 async function handleError(e: unknown): Promise<ActionResult> {
   if (e instanceof AuthError) return fail(e.message);
   console.error(e);
@@ -51,44 +59,46 @@ export async function assignIssue(issueId: string, assigneeId: string): Promise<
     });
 
     // Create (or reassign) a work order.
-    const orders = await store.getWorkOrders();
-    const existing = orders.find((w) => w.issueId === issueId && w.status !== "completed");
-    if (existing) {
-      await store.updateWorkOrder(existing.id, {
-        assignedToId: assignee.id,
-        assignedToName: assignee.fullName,
-        teamName,
-        status: existing.status === "unassigned" ? "acknowledged" : existing.status,
-      });
-    } else {
-      await store.createWorkOrder({
-        issueId,
-        title: issue.title,
-        assignedToId: assignee.id,
-        assignedToName: assignee.fullName,
-        teamName,
-        status: "acknowledged" as WorkOrderStatus,
-        priority: issue.priority,
-        dueAt: new Date(Date.now() + issue.slaHours * 3600_000).toISOString(),
-      });
-    }
+    await bestEffort("work order", async () => {
+      const orders = await store.getWorkOrders();
+      const existing = orders.find((w) => w.issueId === issueId && w.status !== "completed");
+      if (existing) {
+        await store.updateWorkOrder(existing.id, {
+          assignedToId: assignee.id,
+          assignedToName: assignee.fullName,
+          teamName,
+          status: existing.status === "unassigned" ? "acknowledged" : existing.status,
+        });
+      } else {
+        await store.createWorkOrder({
+          issueId,
+          title: issue.title,
+          assignedToId: assignee.id,
+          assignedToName: assignee.fullName,
+          teamName,
+          status: "acknowledged" as WorkOrderStatus,
+          priority: issue.priority,
+          dueAt: new Date(Date.now() + issue.slaHours * 3600_000).toISOString(),
+        });
+      }
+    });
 
-    await store.addEvent({
+    await bestEffort("assignment event", () => store.addEvent({
       issueId,
       type: "assigned",
       title: `Assigned to ${assignee.fullName}`,
       description: teamName ? `Routed to ${teamName}.` : null,
       actorId: admin.id,
       actorName: admin.fullName,
-    });
+    }));
 
-    await store.createNotification({
+    await bestEffort("assignment notification", () => store.createNotification({
       userId: assignee.id,
       title: "New assignment",
       body: `You were assigned “${issue.title}”.`,
       kind: "assignment",
       linkHref: `/issues/${issueId}`,
-    });
+    }));
 
     revalidatePath("/dashboard");
     revalidatePath(`/issues/${issueId}`);
@@ -124,14 +134,14 @@ export async function changeIssueStatus(
       resolutionNote: note ?? issue.resolutionNote,
     });
 
-    await store.addEvent({
+    await bestEffort("status event", () => store.addEvent({
       issueId,
       type: "status_changed",
       title: `Status → ${to.replace(/_/g, " ")}`,
       description: note ?? null,
       actorId: actor.id,
       actorName: actor.fullName,
-    });
+    }));
 
     revalidatePath("/dashboard");
     revalidatePath(`/issues/${issueId}`);

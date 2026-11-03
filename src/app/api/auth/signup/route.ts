@@ -13,10 +13,10 @@ function redirect(request: NextRequest, path: string, params?: Record<string, st
 }
 
 function matchesAdminKey(candidate: string) {
-  const expectedValue = process.env.ADMIN_BOOTSTRAP_KEY;
+  const expectedValue = process.env.ADMIN_BOOTSTRAP_KEY?.trim();
   if (!expectedValue || expectedValue.length < 24) return false;
   const expected = Buffer.from(expectedValue);
-  const candidateBuffer = Buffer.from(candidate);
+  const candidateBuffer = Buffer.from(candidate.trim());
   return expected.length === candidateBuffer.length && timingSafeEqual(expected, candidateBuffer);
 }
 

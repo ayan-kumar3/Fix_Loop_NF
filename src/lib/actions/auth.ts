@@ -40,10 +40,10 @@ function friendlyAuthError(error: { message?: string } | null | undefined, actio
 }
 
 function matchesAdminBootstrapKey(candidate: string): boolean {
-  const configuredKey = process.env.ADMIN_BOOTSTRAP_KEY;
+  const configuredKey = process.env.ADMIN_BOOTSTRAP_KEY?.trim();
   if (!configuredKey || configuredKey.length < 24) return false;
   const expected = Buffer.from(configuredKey);
-  const submitted = Buffer.from(candidate);
+  const submitted = Buffer.from(candidate.trim());
   return expected.length === submitted.length && timingSafeEqual(expected, submitted);
 }
 

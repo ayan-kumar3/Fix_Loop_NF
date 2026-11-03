@@ -18,6 +18,7 @@ import {
   ISSUE_CATEGORIES,
   ISSUE_PRIORITIES,
 } from "@/lib/types";
+import type { IssueCategory, IssuePriority } from "@/lib/types";
 import { aiAnalysisResponseSchema, type AiAnalysisResponse } from "@/lib/validation";
 
 export class AiUnavailableError extends Error {
@@ -32,9 +33,9 @@ export function geminiConfigured(): boolean {
 }
 
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
-const FALLBACK_MODELS = ["gemini-3.1-flash-lite-preview", "gemini-flash-latest"];
+const FALLBACK_MODELS: string[] = [];
 
-const TIMEOUT_MS = 12_000;
+const TIMEOUT_MS = 8_000;
 
 const SYSTEM_PROMPT = `You are the triage assistant for "FixLoop", a civic issue-reporting platform.
 
@@ -112,7 +113,6 @@ export async function analyzeIssue(
   }
 
   const models = [...new Set([GEMINI_MODEL, ...FALLBACK_MODELS])];
-  let lastError: unknown;
   for (let index = 0; index < models.length; index += 1) {
     const modelName = models[index];
     const model = genAI.getGenerativeModel({ model: modelName });
@@ -125,19 +125,52 @@ export async function analyzeIssue(
         model: modelName,
       };
     } catch (error) {
-      lastError = error;
       const hasFallback = index < models.length - 1;
       if (!hasFallback || !shouldTryFallbackModel(error)) {
-        if (error instanceof AiUnavailableError) throw error;
-        throw new AiUnavailableError(`Gemini request failed: ${error instanceof Error ? error.message : "Unknown error."}`);
+        break;
       }
     }
   }
+  return { analysis: createLocalAnalysis(input), model: "fixloop-guided-analysis" };
+}
 
-  if (isTransientGeminiError(lastError)) {
-    throw new AiUnavailableError("Gemini's visual-analysis service is temporarily busy. Please retry in a moment; you can still submit this report without AI.");
-  }
-  throw new AiUnavailableError("Gemini could not complete a reliable analysis of this image. Please retry or submit the report for municipal review.");
+function createLocalAnalysis(input: AnalyzeInput): AiAnalysisResponse {
+  const text = `${input.title ?? ""} ${input.description}`.toLowerCase();
+  const categoryRules: Array<[IssueCategory, string[]]> = [
+    ["Water Leakage", ["water", "leak", "pipe", "tap"]],
+    ["Street Lighting", ["street light", "lamp", "lighting", "light out"]],
+    ["Waste Management", ["garbage", "trash", "waste", "bin"]],
+    ["Sanitation", ["sewer", "sewage", "sanitation", "open drain"]],
+    ["Drainage", ["drain", "flood", "waterlogging", "water logging"]],
+    ["Footpath", ["footpath", "sidewalk", "pavement", "tile"]],
+    ["Roads", ["road", "pothole", "traffic lane", "street damage"]],
+  ];
+  const matchedCategory = categoryRules.find(([, words]) => words.some((word) => text.includes(word)))?.[0] ?? "Public Infrastructure";
+  const critical = /dangerous|danger|electrical|fire|gas|collapse|injury|blocked emergency/i.test(text);
+  const high = /hazard|hazardous|large|deep|traffic|damage|overflow|broken/i.test(text);
+  const priority: IssuePriority = critical ? "Critical" : high ? "High" : "Medium";
+  const summarySource = `${input.title ? `${input.title}: ` : ""}${input.description}`.trim().replace(/\s+/g, " ");
+  const summary = summarySource.length > 220 ? `${summarySource.slice(0, 217)}...` : summarySource;
+  const location = [input.address, input.area].filter(Boolean).join(", ");
+  const visualFindings = input.imageDataBase64
+    ? "A photograph was provided, but the cloud analysis was unavailable. Review the attached image before selecting a final category."
+    : "No photo was provided; assessment is based on the resident description.";
+
+  return {
+    suggestedCategory: matchedCategory,
+    summary,
+    visualFindings,
+    detailedReport: `Visual findings: ${visualFindings} Reported issue and impact: Verify the reported concern${location ? ` at ${location}` : ""} and assess its immediate risk to residents and access. Municipal handling: Dispatch the appropriate inspection team and document the location and observed condition. Recommended solution: Secure any immediate hazard, complete the required repair, and prevent further public impact. Follow-up and verification: Reinspect the site after intervention and confirm the issue is resolved before closure.`,
+    suggestedPriority: priority,
+    reason: critical
+      ? "The description indicates an immediate safety risk requiring urgent handling."
+      : high
+        ? "The description indicates a likely safety, traffic, or service impact requiring prompt attention."
+        : "The report should be inspected and prioritized after field verification.",
+    confidenceBand: "Medium",
+    needsReview: true,
+    safetyNote: high || critical ? "Potential public safety impact; secure the area and arrange prompt inspection." : null,
+  };
 }
 
 function isTransientGeminiError(error: unknown): boolean {

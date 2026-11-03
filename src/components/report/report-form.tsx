@@ -343,7 +343,7 @@ export function ReportForm() {
     setAiError(null);
     const controller = new AbortController();
     analysisControllerRef.current = controller;
-    const timeout = window.setTimeout(() => controller.abort(), 20_000);
+    const timeout = window.setTimeout(() => controller.abort(), 12_000);
     try {
       const requestBody = {
         description: description.trim(),

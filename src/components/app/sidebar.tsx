@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Map,
@@ -70,8 +70,15 @@ const SECTIONS: Array<{ title: string; items: NavItem[] }> = [
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { profile, mode } = useApp();
   const unread = useUnreadCount();
+
+  React.useEffect(() => {
+    SECTIONS.forEach((section) => {
+      section.items.forEach((item) => router.prefetch(item.href));
+    });
+  }, [router]);
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);

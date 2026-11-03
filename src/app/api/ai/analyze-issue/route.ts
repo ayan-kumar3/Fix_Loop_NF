@@ -6,6 +6,7 @@ import { rateLimit, clientKey } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 20;
 
 export async function POST(req: Request) {
   // Auth: only signed-in users may run analysis.

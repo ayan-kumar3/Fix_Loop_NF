@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Cpu, MapPin, Palette, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { ProfileForm } from "@/components/settings/profile-form";
+import { SampleDataControl } from "@/components/settings/sample-data-control";
 import { Badge, toneToVariant } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile } from "@/lib/auth";
@@ -18,6 +19,9 @@ export default async function SettingsPage() {
 
   const store = await getStore();
   const mode = runtimeMode();
+  const sampleCount = mode === "supabase"
+    ? (await store.getIssues()).filter((issue) => issue.isDemoData).length
+    : 0;
 
   return (
     <div className="flex flex-col">
@@ -55,6 +59,17 @@ export default async function SettingsPage() {
               {mode === "demo" && <Badge variant="info">Demo</Badge>}
             </CardContent>
           </Card>
+
+          {mode === "supabase" && profile.role === "administrator" && (
+            <Card className="shadow-card">
+              <CardHeader className="border-b pb-3">
+                <CardTitle className="text-sm">Workspace data</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <SampleDataControl sampleCount={sampleCount} />
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="shadow-card">
             <CardHeader className="border-b pb-3">

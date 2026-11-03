@@ -460,6 +460,9 @@ export function ReportForm() {
             <p className="mt-1 font-mono text-lg font-bold text-slate-900">{success.publicId}</p>
           </div>
           <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <Button type="button" onClick={() => router.push(`/issues/${success.issueId}`)}>
+              View submitted report <ArrowRight className="h-4 w-4" />
+            </Button>
             <Button type="button" onClick={() => router.push("/reports")}>
               View reports <ArrowRight className="h-4 w-4" />
             </Button>

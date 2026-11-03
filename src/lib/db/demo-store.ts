@@ -123,7 +123,11 @@ export class DemoStore implements DataStore {
     return [...this.db().issues].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
   }
   async getIssue(id: string): Promise<Issue | null> {
-    return this.db().issues.find((i) => i.id === id || i.publicId === id) ?? null;
+    const issue = this.db().issues.find((i) => i.id === id || i.publicId === id) ?? null;
+    if (issue && issue.status === "assigned" && !issue.assignedToId) {
+      issue.status = "under_review";
+    }
+    return issue ?? null;
   }
   async getIssuesByIds(ids: string[]): Promise<Issue[]> {
     const set = new Set(ids);

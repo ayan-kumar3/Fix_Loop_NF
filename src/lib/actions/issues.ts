@@ -48,6 +48,9 @@ export async function assignIssue(issueId: string, assigneeId: string): Promise<
     if (!issue) return fail("Issue not found.");
     const assignee = await store.getProfile(assigneeId);
     if (!assignee) return fail("Team member not found.");
+    if (assignee.role !== "field_staff" || !assignee.isActive) {
+      return fail("Select an active Field Staff member.");
+    }
 
     const teamName = deriveTeamName(assignee.teamId, await store.getTeams());
 

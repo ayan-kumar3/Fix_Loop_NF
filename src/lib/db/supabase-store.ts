@@ -69,7 +69,7 @@ function mapIssue(r: IssueRow): Issue {
     description: r.description,
     category: r.category,
     priority: r.priority,
-    status: r.status,
+    status: r.status === "assigned" && !r.assigned_to_id ? "under_review" : r.status,
     location: { address: r.address, area: r.area ?? "Unzoned", coordinates: { lat: r.lat, lng: r.lng } },
     reporterId: r.reporter_id ?? "",
     reporterName: r.reporter_name ?? "Resident",
@@ -223,8 +223,13 @@ export class SupabaseStore implements DataStore {
     });
   }
   async getIssue(id: string): Promise<Issue | null> {
-    const { data, error } = await this.db.from("issues").select("*").eq("id", id).maybeSingle();
+    let { data, error } = await this.db.from("issues").select("*").eq("id", id).maybeSingle();
     if (error) throw error;
+    if (!data) {
+      const publicIdLookup = await this.db.from("issues").select("*").eq("public_id", id).maybeSingle();
+      if (publicIdLookup.error) throw publicIdLookup.error;
+      data = publicIdLookup.data;
+    }
     if (!data) return null;
     const issue = mapIssue(data as unknown as IssueRow);
     const [comments, media, groups] = await Promise.all([

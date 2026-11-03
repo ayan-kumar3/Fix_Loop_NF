@@ -34,7 +34,7 @@ export function geminiConfigured(): boolean {
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
 const FALLBACK_MODELS = ["gemini-3.1-flash-lite-preview", "gemini-flash-latest"];
 
-const TIMEOUT_MS = 20_000;
+const TIMEOUT_MS = 12_000;
 
 const SYSTEM_PROMPT = `You are the triage assistant for "FixLoop", a civic issue-reporting platform.
 

@@ -108,6 +108,7 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
   const [busy, setBusy] = React.useState<string | null>(null);
   const [comment, setComment] = React.useState("");
   const [verifyReason, setVerifyReason] = React.useState("");
+  const [selectedStaffId, setSelectedStaffId] = React.useState(issue.assignedToId ?? "");
 
   const refresh = () => router.refresh();
   const run = async (key: string, fn: () => Promise<{ ok: boolean; error?: string; message?: string }>, successMsg?: string) => {
@@ -375,14 +376,29 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
             {isAdmin && (
               <div className="space-y-1.5">
                 <span className="text-xs font-medium text-slate-500">Assign to team member</span>
-                <Select onValueChange={(id) => run("assign", () => assignIssue(issue.id, id))}>
-                  <SelectTrigger><SelectValue placeholder="Choose staff…" /></SelectTrigger>
+                <Select
+                  value={selectedStaffId || undefined}
+                  onValueChange={(id) => {
+                    if (!id || busy) return;
+                    setSelectedStaffId(id);
+                    run("assign", () => assignIssue(issue.id, id));
+                  }}
+                  disabled={staff.length === 0 || busy !== null}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={staff.length === 0 ? "No field staff available" : "Choose staff…"} />
+                  </SelectTrigger>
                   <SelectContent>
                     {staff.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.fullName}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {staff.length === 0 && (
+                  <p className="text-xs text-slate-500">
+                    Add and activate a Field Staff account before assigning this report.
+                  </p>
+                )}
               </div>
             )}
 

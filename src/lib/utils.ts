@@ -112,7 +112,12 @@ export function ageLabel(issue: Pick<Issue, "createdAt">): string {
 }
 
 export function formatDateTime(iso: string): string {
-  return format(new Date(iso), "MMM d, yyyy 'at' h:mm a");
+  const date = new Date(iso);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const hours = date.getUTCHours();
+  const hour12 = hours % 12 || 12;
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()} at ${hour12}:${minutes} ${hours >= 12 ? "PM" : "AM"}`;
 }
 
 export function formatDateShort(iso: string): string {

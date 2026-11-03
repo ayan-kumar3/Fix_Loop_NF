@@ -232,10 +232,10 @@ export function RecentReports({
                   <PriorityChip priority={i.priority} />
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-xs text-slate-500" title={formatDateTime(i.createdAt)}>
-                  {formatDateTime(i.createdAt).replace(" at ", ", ")}
+                  <span suppressHydrationWarning>{formatDateTime(i.createdAt).replace(" at ", ", ")}</span>
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm font-medium tabular-nums text-slate-600">
-                  {ageLabel(i)}
+                  <span suppressHydrationWarning>{ageLabel(i)}</span>
                 </TableCell>
               </TableRow>
             ))

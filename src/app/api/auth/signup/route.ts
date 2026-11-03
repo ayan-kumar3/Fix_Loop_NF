@@ -44,7 +44,8 @@ export async function POST(request: NextRequest) {
   if (!supabaseConfigured()) {
     const store = await getStore();
     try {
-      const profile = await store.createProfile({ fullName, email, role: "resident", password });
+      const profileRole = requestedRole === "administrator" ? "administrator" : "resident";
+      const profile = await store.createProfile({ fullName, email, role: profileRole, password });
       if (requestedRole === "field_staff") {
         await store.createRoleRequest(profile.id, "field_staff");
       }

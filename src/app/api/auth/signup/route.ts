@@ -4,6 +4,7 @@ import { createRouteClient, getServiceClient } from "@/lib/supabase/server";
 import { getStore, supabaseConfigured } from "@/lib/db/store";
 import { USER_ROLES } from "@/lib/types";
 import { validateEmail, validatePassword } from "@/lib/validation";
+import { createDemoAccountCookie, DEMO_ACCOUNT_COOKIE } from "@/lib/auth";
 
 function redirect(request: NextRequest, path: string, params?: Record<string, string>) {
   const url = new URL(path, request.url);
@@ -47,16 +48,24 @@ export async function POST(request: NextRequest) {
       if (requestedRole === "field_staff") {
         await store.createRoleRequest(profile.id, "field_staff");
       }
+      const response = redirect(request, "/login", {
+        registered: "1",
+        email,
+        ...(requestedRole === "field_staff" ? { field_staff: "1" } : {}),
+      });
+      response.cookies.set(DEMO_ACCOUNT_COOKIE, createDemoAccountCookie(profile, password), {
+        httpOnly: true,
+        secure: request.nextUrl.protocol === "https:",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      return response;
     } catch (error) {
       return redirect(request, "/signup", {
         error: error instanceof Error ? error.message : "Unable to create your account right now.",
       });
     }
-    return redirect(request, "/login", {
-      registered: "1",
-      email,
-      ...(requestedRole === "field_staff" ? { field_staff: "1" } : {}),
-    });
   }
 
   const response = NextResponse.next();

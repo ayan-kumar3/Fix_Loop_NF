@@ -23,9 +23,58 @@ export const validatePassword = _validatePassword;
 export const validateEmail = _validateEmail;
 
 export const SESSION_COOKIE = "fixloop_session";
+export const DEMO_ACCOUNT_COOKIE = "fixloop_demo_account";
 
 function sessionCookieSecret(): string {
   return process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+}
+
+function demoCookieSecret(): string {
+  return process.env.SESSION_COOKIE_SECRET || process.env.ADMIN_BOOTSTRAP_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "fixloop-demo-session";
+}
+
+export function createDemoAccountCookie(profile: Profile, password: string): string {
+  const payload = Buffer.from(JSON.stringify({
+    id: profile.id,
+    fullName: profile.fullName,
+    email: profile.email,
+    role: profile.role,
+    passwordHash: createHmac("sha256", demoCookieSecret()).update(password).digest("hex"),
+  })).toString("base64url");
+  const signature = createHmac("sha256", demoCookieSecret()).update(payload).digest("hex");
+  return `${payload}.${signature}`;
+}
+
+export function verifyDemoAccountCookie(
+  value: string | undefined,
+  email: string,
+  password: string
+): { id: string; fullName: string; email: string; role: Profile["role"] } | null {
+  if (!value) return null;
+  const separator = value.lastIndexOf(".");
+  if (separator <= 0) return null;
+  const payload = value.slice(0, separator);
+  const signature = value.slice(separator + 1);
+  const expected = createHmac("sha256", demoCookieSecret()).update(payload).digest("hex");
+  const provided = Buffer.from(signature);
+  const actual = Buffer.from(expected);
+  if (provided.length !== actual.length || !timingSafeEqual(provided, actual)) return null;
+
+  try {
+    const account = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      id: string;
+      fullName: string;
+      email: string;
+      role: Profile["role"];
+      passwordHash: string;
+    };
+    const passwordHash = createHmac("sha256", demoCookieSecret()).update(password).digest("hex");
+    if (account.email.toLowerCase() !== email.toLowerCase()) return null;
+    if (account.passwordHash !== passwordHash) return null;
+    return { id: account.id, fullName: account.fullName, email: account.email, role: account.role };
+  } catch {
+    return null;
+  }
 }
 
 export function signSessionUserId(userId: string): string | null {
@@ -79,6 +128,37 @@ export async function getSessionUserId(): Promise<string | null> {
   }
 
   try {
+    const accountCookie = cookies().get(DEMO_ACCOUNT_COOKIE)?.value;
+    if (accountCookie) {
+      const separator = accountCookie.lastIndexOf(".");
+      const payload = separator > 0 ? accountCookie.slice(0, separator) : "";
+      const signature = separator > 0 ? accountCookie.slice(separator + 1) : "";
+      const expected = createHmac("sha256", demoCookieSecret()).update(payload).digest("hex");
+      const provided = Buffer.from(signature);
+      const actual = Buffer.from(expected);
+      if (provided.length === actual.length && timingSafeEqual(provided, actual)) {
+        try {
+          const account = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+            id: string;
+            fullName: string;
+            email: string;
+            role: Profile["role"];
+          };
+          const store = await getStore();
+          if (!(await store.getProfile(account.id))) {
+            await store.createProfile({
+              id: account.id,
+              fullName: account.fullName,
+              email: account.email,
+              role: account.role,
+            });
+          }
+          return account.id;
+        } catch {
+          // Fall through to the session cookie for seeded demo accounts.
+        }
+      }
+    }
     return cookies().get(SESSION_COOKIE)?.value ?? null;
   } catch {
     return null;

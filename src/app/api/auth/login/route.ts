@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient, getServiceClient } from "@/lib/supabase/server";
 import { getStore, supabaseConfigured } from "@/lib/db/store";
 import { validateEmail } from "@/lib/validation";
-import { SESSION_COOKIE, signSessionUserId } from "@/lib/auth";
+import { DEMO_ACCOUNT_COOKIE, SESSION_COOKIE, signSessionUserId, verifyDemoAccountCookie } from "@/lib/auth";
 
 function redirectWithError(request: NextRequest, message: string) {
   const url = new URL("/login", request.url);
@@ -21,6 +21,27 @@ export async function POST(request: NextRequest) {
 
   if (!supabaseConfigured()) {
     const store = await getStore();
+    const registeredAccount = verifyDemoAccountCookie(request.cookies.get(DEMO_ACCOUNT_COOKIE)?.value, email, password);
+    if (registeredAccount) {
+      let profile = await store.getProfile(registeredAccount.id);
+      if (!profile) {
+        profile = await store.createProfile({
+          id: registeredAccount.id,
+          fullName: registeredAccount.fullName,
+          email: registeredAccount.email,
+          role: registeredAccount.role,
+        });
+      }
+      const response = NextResponse.redirect(new URL("/dashboard", request.url), { status: 303 });
+      response.cookies.set(SESSION_COOKIE, profile.id, {
+        httpOnly: true,
+        secure: request.nextUrl.protocol === "https:",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      return response;
+    }
     const profile = (await store.getProfiles()).find(
       (candidate) => candidate.email.toLowerCase() === email
     );

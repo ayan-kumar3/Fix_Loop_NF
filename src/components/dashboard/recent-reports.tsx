@@ -212,11 +212,17 @@ export function RecentReports({
               <TableRow
                 key={i.id}
                 className="cursor-pointer"
-                onClick={() => router.push(`/issues/${i.id}`)}
+                onClick={() => router.push(`/issues/${encodeURIComponent(i.publicId)}`)}
               >
                 <TableCell>
                   <div className="max-w-[240px]">
-                    <div className="truncate text-sm font-medium text-slate-900">{truncate(i.title, 48)}</div>
+                    <Link
+                      href={`/issues/${encodeURIComponent(i.publicId)}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className="block truncate text-sm font-medium text-slate-900 hover:text-brand-700 hover:underline"
+                    >
+                      {truncate(i.title, 48)}
+                    </Link>
                     <div className="text-xs text-slate-400">{i.publicId}</div>
                   </div>
                 </TableCell>

@@ -76,7 +76,7 @@ export function HighPriorityList({
               <div
                 key={issue.id}
                 className="group flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-slate-50"
-                onClick={() => router.push(`/issues/${issue.id}`)}
+                onClick={() => router.push(`/issues/${encodeURIComponent(issue.publicId)}`)}
               >
                 <span
                   className={cn(
@@ -143,7 +143,7 @@ export function HighPriorityList({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/issues/${issue.id}`}>
+                        <Link href={`/issues/${encodeURIComponent(issue.publicId)}`}>
                           <Eye className="h-4 w-4" /> View details
                         </Link>
                       </DropdownMenuItem>

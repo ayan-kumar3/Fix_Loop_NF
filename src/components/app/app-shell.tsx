@@ -22,7 +22,7 @@ export function AppShell({
 
   return (
     <AppProvider profile={profile} mode={mode} initialNotifications={notifications}>
-      <div className="app-frame flex h-screen min-h-0 overflow-hidden">
+      <div className="app-frame flex h-screen min-h-0 overflow-hidden" suppressHydrationWarning>
         {/* Desktop sidebar */}
         <aside className="hidden w-64 shrink-0 border-r border-slate-200/80 dark:border-slate-800/70 lg:block">
           <Sidebar />

@@ -1,5 +1,6 @@
 import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 
 /**
  * Server-side Supabase client bound to the request cookies. Uses the public
@@ -21,22 +22,37 @@ export function createServerClient() {
 
   return createSupabaseServerClient(url, anonKey, {
     cookies: {
-      get(name: string) {
-        return cookieStore?.get(name)?.value;
+      getAll() {
+        return cookieStore?.getAll() ?? [];
       },
-      set(name: string, value: string, options: CookieOptions) {
+      setAll(cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>) {
         try {
-          cookieStore?.set({ name, value, ...options });
-        } catch {
-          // Called from a Server Component — safe to ignore when refreshing.
-        }
-      },
-      remove(name: string, options: CookieOptions) {
-        try {
-          cookieStore?.set({ name, value: "", ...options });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore?.set({ name, value, ...options });
+          });
         } catch {
           // Safe to ignore.
         }
+      },
+    },
+  });
+}
+
+export function createRouteClient(request: NextRequest, response: NextResponse) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  return createSupabaseServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options);
+        });
       },
     },
   });

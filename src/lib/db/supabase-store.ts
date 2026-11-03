@@ -95,7 +95,7 @@ export class SupabaseStore implements DataStore {
   private admin = getServiceClient();
 
   constructor() {
-    this.db = createServerClient();
+    this.db = (this.admin ?? createServerClient()) as Session;
   }
 
   private get write() {

@@ -2,9 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useFormState, useFormStatus } from "react-dom";
-import { Eye, EyeOff, Loader2, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
-import { signup, type AuthState } from "@/lib/actions/auth";
+import { Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
 import { validatePassword } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,24 +11,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function SubmitButton() {
-  const { pending } = useFormStatus();
   return (
-    <Button type="submit" className="auth-submit w-full" disabled={pending}>
-      {pending ? <Loader2 className="animate-spin" /> : <UserPlus />}
-      {pending ? "Creating account…" : "Create account"}
+    <Button type="submit" className="auth-submit w-full">
+      <UserPlus />
+      Create account
     </Button>
   );
 }
 
 export default function SignupPage() {
-  const [state, formAction] = useFormState<AuthState, FormData>(signup, {});
   const [showPassword, setShowPassword] = React.useState(false);
   const [password, setPassword] = React.useState("");
   const [requestedRole, setRequestedRole] = React.useState("resident");
-
-  const fieldErrors = state?.fieldErrors ?? {};
+  const [serverError, setServerError] = React.useState("");
   const passErr = password ? validatePassword(password) : null;
   const passOk = password.length > 0 && !passErr;
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setServerError(params.get("error") ? decodeURIComponent(params.get("error")!) : "");
+  }, []);
 
   return (
     <Card className="auth-card auth-card-signup">
@@ -40,24 +40,22 @@ export default function SignupPage() {
         <CardDescription className="auth-card-description" data-auth-step>Join your community operations platform.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="auth-form space-y-4">
-          {state?.error && (
+        <form action="/api/auth/signup" method="post" className="auth-form space-y-4">
+          {serverError && (
             <div role="alert" className="auth-error flex items-start gap-2 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{state.error}</span>
+              <span>{serverError}</span>
             </div>
           )}
 
           <div className="auth-field space-y-1.5" data-auth-step>
             <Label htmlFor="fullName">Full name</Label>
-            <Input id="fullName" name="fullName" placeholder="Jane Doe" autoComplete="name" aria-invalid={Boolean(fieldErrors.fullName)} aria-describedby={fieldErrors.fullName ? "fullName-error" : undefined} />
-            {fieldErrors.fullName && <p id="fullName-error" className="text-xs text-danger">{fieldErrors.fullName}</p>}
+            <Input id="fullName" name="fullName" placeholder="Jane Doe" autoComplete="name" required />
           </div>
 
           <div className="auth-field space-y-1.5" data-auth-step>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "email-error" : undefined} />
-            {fieldErrors.email && <p id="email-error" className="text-xs text-danger">{fieldErrors.email}</p>}
+            <Input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required />
           </div>
 
           <div className="auth-field space-y-1.5" data-auth-step>
@@ -72,8 +70,7 @@ export default function SignupPage() {
                 className="pr-10"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                aria-invalid={Boolean(fieldErrors.password || passErr)}
-                aria-describedby={fieldErrors.password ? "password-error" : password ? "password-feedback" : undefined}
+                required
               />
               <button
                 type="button"
@@ -91,13 +88,12 @@ export default function SignupPage() {
                 {passOk ? "Password looks good" : passErr}
               </p>
             )}
-            {fieldErrors.password && <p id="password-error" className="text-xs text-danger">{fieldErrors.password}</p>}
           </div>
 
           <div className="auth-field space-y-1.5" data-auth-step>
             <Label htmlFor="requestedRole">Choose your account role</Label>
             <Select name="requestedRole" value={requestedRole} onValueChange={setRequestedRole}>
-              <SelectTrigger id="requestedRole" aria-invalid={Boolean(fieldErrors.requestedRole)}>
+              <SelectTrigger id="requestedRole">
                 <SelectValue placeholder="Choose a role" />
               </SelectTrigger>
               <SelectContent>
@@ -106,7 +102,6 @@ export default function SignupPage() {
                 <SelectItem value="administrator">Administrator (setup key required)</SelectItem>
               </SelectContent>
             </Select>
-            {fieldErrors.requestedRole && <p className="text-xs text-danger">{fieldErrors.requestedRole}</p>}
             <p className="text-xs text-slate-500">
               {requestedRole === "administrator"
                 ? "Anyone with the valid workspace setup key can register as an administrator."
@@ -124,12 +119,8 @@ export default function SignupPage() {
                 name="adminBootstrapKey"
                 type="password"
                 autoComplete="off"
-                aria-invalid={Boolean(fieldErrors.adminBootstrapKey)}
-                aria-describedby={fieldErrors.adminBootstrapKey ? "adminBootstrapKey-error" : "adminBootstrapKey-help"}
               />
-              {fieldErrors.adminBootstrapKey
-                ? <p id="adminBootstrapKey-error" className="text-xs text-danger">{fieldErrors.adminBootstrapKey}</p>
-                : <p id="adminBootstrapKey-help" className="text-xs text-slate-500">Ask the project owner for the one-time workspace setup key.</p>}
+              <p id="adminBootstrapKey-help" className="text-xs text-slate-500">Ask the project owner for the one-time workspace setup key.</p>
             </div>
           )}
 

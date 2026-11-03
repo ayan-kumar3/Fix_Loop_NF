@@ -119,7 +119,22 @@ export function IssueDetailView({ data }: { data: IssueDetailData }) {
     const res = await fn();
     setBusy(null);
     if (res.ok) {
-      toast({ title: "Done", description: successMsg ?? res.message ?? "Updated.", variant: "success" });
+      const workflowToast =
+        key === "assign"
+          ? {
+              title: "Staff assigned",
+              description: staff.find((member) => member.id === selectedStaffId)?.fullName
+                ? `Assigned successfully to ${staff.find((member) => member.id === selectedStaffId)?.fullName}.`
+                : successMsg ?? res.message,
+            }
+          : key === "under_review"
+            ? { title: "Moved to review", description: "This report is now under review." }
+            : null;
+      toast({
+        title: workflowToast?.title ?? "Done",
+        description: workflowToast?.description ?? successMsg ?? res.message ?? "Updated.",
+        variant: "success",
+      });
       refresh();
     } else {
       toast({ title: "Action failed", description: res.error, variant: "error" });

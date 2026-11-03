@@ -35,7 +35,7 @@ export function geminiConfigured(): boolean {
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
 const FALLBACK_MODELS: string[] = [];
 
-const TIMEOUT_MS = 8_000;
+const TIMEOUT_MS = 4_000;
 
 const SYSTEM_PROMPT = `You are the triage assistant for "FixLoop", a civic issue-reporting platform.
 
@@ -89,7 +89,7 @@ export async function analyzeIssue(
   input: AnalyzeInput
 ): Promise<{ analysis: AiAnalysisResponse; model: string }> {
   if (!geminiConfigured()) {
-    throw new AiUnavailableError("Gemini is not configured. Add GEMINI_API_KEY to enable AI analysis.");
+    return { analysis: createLocalAnalysis(input), model: "fixloop-guided-analysis" };
   }
 
   const apiKey = process.env.GEMINI_API_KEY!;

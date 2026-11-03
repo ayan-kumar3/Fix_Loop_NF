@@ -24,14 +24,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // If Gemini is not configured, tell the client to fall back to manual entry.
-  if (!geminiConfigured()) {
-    return NextResponse.json(
-      { error: "AI analysis is unavailable (no API key configured). Please continue manually.", available: false },
-      { status: 503 }
-    );
-  }
-
   let body: unknown;
   try {
     body = await req.json();
